@@ -23,8 +23,9 @@ while True:
     # Считываем команды игроков
     for sock in players:
         try:
-            data = sock.recv(1024).decode()
-            print("получил", data)
+            sock.send("игра".encode())
         except:
-            pass
+            players.remove(sock)
+            sock.close()
+            print("сокет закрыт")
     time.sleep(1)
