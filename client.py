@@ -40,4 +40,5 @@ while run:
     screen.fill("gray")
     pygame.draw.circle(screen, (255, 0, 0), CC, radius)
     pygame.display.update()
+
 pygame.quit()
