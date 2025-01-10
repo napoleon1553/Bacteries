@@ -88,7 +88,7 @@ while run:
     data = sock.recv(1024).decode()
     # print("получил:", data)
 
-    screen.fill("gray")
+screen.fill("gray")
     pygame.draw.circle(screen, color, CC, radius)
     if data != [""]:
         draw_bacteries(data)
