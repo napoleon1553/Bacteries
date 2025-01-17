@@ -28,6 +28,7 @@ MOBS_QUANTITY = 25
 FOOD_SIZE = 15
 FOOD_QUANTITY = WIDHT_ROOM * HEIGHT_ROOM // 40000
 
+
 # Создание окна сервера
 screen = pygame.display.set_mode((WIDHT_SERVER, HEIGHT_SERVER))
 pygame.display.set_caption("Сервер")
@@ -98,7 +99,7 @@ class LocalPlayer:
         self.color = "red"
         self.w_vision = 800
         self.h_vision = 600
-        self.l=1
+        self.L = 1
 
     def update(self):
         # х координата
@@ -121,19 +122,20 @@ class LocalPlayer:
         else:  # Если игрок находится в границе комнаты
             self.y += self.speed_y
 
-        # Меняем размер
+        # Меняем размер худеем
         if self.size >= 100:
             self.size -= self.size / 18000
 
-        #меняем масштаб игрока
-        if self.size>=self.w_vision/4:
-            if self.w_vision<=WIDHT_ROOM or self.h_vision<=HEIGHT_ROOM:
-                self.L*=2
-                self.w_vision=800*self.L
-                self.h_vision=600*self.L
+        # Меняем масштаб игрока
+        if self.size >= self.w_vision / 4:
+            if self.w_vision <= WIDHT_ROOM or self.h_vision <= HEIGHT_ROOM:
+                self.L *= 2
+                self.w_vision = 800 * self.L
+                self.h_vision = 600 * self.L
+
         if self.size < self.w_vision / 8 and self.size < self.h_vision / 8:
             if self.L > 1:
-                self.L //= 22
+                self.L //= 2
                 self.w_vision = 800 * self.L
                 self.h_vision = 600 * self.L
 
@@ -184,66 +186,6 @@ class Food:
         self.y = y
         self.size = size
         self.color = color
-
-
-# Функция для создания моба
-def create_mob(name, health=100):
-    return {
-        'name': name,
-        'health': health,
-        'weight': 150  # Начальный вес моба
-    }
-
-
-# Функция для создания еды
-def create_food(name, calories=50):
-    return {
-        'name': name,
-        'calories': calories
-    }
-
-
-# Основная функция игры
-def play_game():
-    bacteria = create_mob('Bacteria')
-
-    food_items = [
-        create_food('Food A'),
-        create_food('Food B', calories=75),
-        create_food('Food C', calories=25)
-    ]
-
-    time_passed = 0
-    while bacteria['health'] > 0:
-        print(f"\nTime passed: {time_passed}")
-
-        if time_passed % 10 == 0:  # Бактерия теряет вес каждые 10 единиц времени
-            lose_weight(bacteria)
-
-        if time_passed % 20 == 0:  # Еда появляется каждые 20 единиц времени
-            new_food = random.choice(food_items)
-            print(f"New food appeared: {new_food['name']} with {new_food['calories']} calories.")
-
-            eat_food(bacteria, new_food)
-
-        time_passed += 1
-
-    print("Game Over!")
-
-
-# Функция для потери веса бактерией
-def lose_weight(bacteria):
-    if bacteria['weight'] > 100:
-        bacteria['weight'] -= 10
-        print(f"Bacteria lost weight: now weighs {bacteria['weight']}.")
-    else:
-        print("Bacteria is already at minimum weight.")
-
-
-# Функция для поедания пищи бактерией
-def eat_food(bacteria, food):
-    bacteria['weight'] += food['calories']
-    print(f"Bacteria ate {food['name']} and gained {food['calories']} weight. Now weighs {bacteria['weight']}.")
 
 
 Base.metadata.create_all(engine)
@@ -306,7 +248,7 @@ while server_works:
             addr = f'({addr[0]},{addr[1]})'
             data = s.query(Player).filter(Player.address == addr)
             for user in data:
-                player = LocalPlayer(user.id, "Имя", new_socket, addr).load()
+                player = LocalPlayer(user.id, player.name, new_socket, addr).load()
                 players[user.id] = player
 
         except BlockingIOError:
@@ -315,20 +257,21 @@ while server_works:
         # Дополняем список мобов
         if len(foods) != 0:
             need = MOBS_QUANTITY - len(players)
-            names = RussianNames(count=need * 2, patronymic=False, surname=False, rare=True)
-            names = list(set(names))  # Список неповторяющихся имён
-            for i in range(MOBS_QUANTITY - len(players)):
-                server_mob = Player(names[i], None)
-                server_mob.color = random.choice(colors)
-                spawn: LocalPlayer = random.choice(foods)
-                foods.remove(spawn)  # Удаляем бактерию, чтобы моб её не съел
-                server_mob.x, server_mob.y = spawn.x, spawn.y
-                server_mob.size = random.randint(10, 100)
-                s.add(server_mob)
-                s.commit()
-                local_mob = LocalPlayer(server_mob.id, server_mob.name, None, None).load()
-                local_mob.new_speed()
-                players[server_mob.id] = local_mob  # Записываем новых мобов в словарь
+            if need > 0:
+                names = RussianNames(count=need * 2, patronymic=False, surname=False, rare=True)
+                names = list(set(names))  # Список неповторяющихся имён
+                for i in range(need):
+                    server_mob = Player(names[i], None)
+                    server_mob.color = random.choice(colors)
+                    spawn: LocalPlayer = random.choice(foods)
+                    foods.remove(spawn)  # Удаляем бактерию, чтобы моб её не съел
+                    server_mob.x, server_mob.y = spawn.x, spawn.y
+                    server_mob.size = random.randint(10, 100)
+                    s.add(server_mob)
+                    s.commit()
+                    local_mob = LocalPlayer(server_mob.id, server_mob.name, None, None).load()
+                    local_mob.new_speed()
+                    players[server_mob.id] = local_mob  # Записываем новых мобов в словарь
 
         # Добавляем список еды
         need = FOOD_QUANTITY - len(foods)
@@ -339,6 +282,7 @@ while server_works:
                 size=FOOD_SIZE,
                 color=random.choice(colors)
             ))
+
 
     # Считываем команды игроков
     for id in list(players):
@@ -355,10 +299,8 @@ while server_works:
 
     # Определим, что видит каждый игрок
     # + съедение друг друга
-    # bacteries = {}
     visible_bacteries = {}
     for id in list(players):
-        # bacteries[id] = s.get(Player, id)  # Заполняем словарь
         visible_bacteries[id] = []
 
     pairs = list(players.items())
@@ -379,17 +321,18 @@ while server_works:
                     foods.remove(food)
                 if hero.address is not None and food.size != 0:
                     # Подготовим данные к добавлению в список
-                    x_ = str(round(dist_x/hero.L))
-                    y_ = str(round(dist_y/hero.L))  # временные
-                    size_=str(round(food.size/hero.L))
+                    x_ = str(round(dist_x / hero.L))
+                    y_ = str(round(dist_y / hero.L))  # временные
+                    size_ = str(round(food.size / hero.L))
                     color_ = food.color
+
                     data = x_ + " " + y_ + " " + size_ + " " + color_
                     visible_bacteries[hero.id].append(data)
 
         for j in range(i + 1, len(pairs)):
             # Рассматриваем пару игроков
-            hero_1: Player = pairs[i][1]
-            hero_2: Player = pairs[j][1]
+            hero_1: LocalPlayer = pairs[i][1]
+            hero_2: LocalPlayer = pairs[j][1]
             dist_x = hero_2.x - hero_1.x
             dist_y = hero_2.y - hero_1.y
 
@@ -406,10 +349,13 @@ while server_works:
                     # Подготовим данные к добавлению в список
                     x_ = str(round(dist_x / hero_1.L))
                     y_ = str(round(dist_y / hero_1.L))  # временные
-                    size_ = str(round(food.size / hero_1.L))
+                    size_ = str(round(hero_2.size / hero_1.L))
                     color_ = hero_2.color
+                    name_ = hero_2.name
 
                     data = x_ + " " + y_ + " " + size_ + " " + color_
+                    if hero_2.size >= 30 * hero_1.L:
+                        data += " " + name_
                     visible_bacteries[hero_1.id].append(data)
 
             # j-й игрок видит i-того
@@ -427,16 +373,23 @@ while server_works:
                     y_ = str(round(-dist_y / hero_2.L))  # временные
                     size_ = str(round(hero_1.size / hero_2.L))
                     color_ = hero_1.color
+                    name_ = hero_1.name
 
                     data = x_ + " " + y_ + " " + size_ + " " + color_
+                    if hero_1.size >= 30 * hero_2.L:
+                        data += " " + name_
                     visible_bacteries[hero_2.id].append(data)
 
     # Формируем ответ каждой бактерии
     for id in list(players):
-        r_ = str(round(players[id].size/players[id].L))
-        visible_bacteries[id] = [r_] + visible_bacteries[id]  # Добавляем в начало списка размер игрока
-        visible_bacteries[id] = "<" + ",".join(visible_bacteries[id]) + ">"
+        r_ = str(round(players[id].size / players[id].L))
+        x_ = str(round(players[id].x / players[id].L))
+        y_ = str(round(players[id].y / players[id].L))
+        L_ = str(round(players[id].L))
 
+        # Добавляем в начало списка размер игрока
+        visible_bacteries[id] = [r_ + " " + x_ + " " + y_ + " " + L_] + visible_bacteries[id]
+        visible_bacteries[id] = "<" + ",".join(visible_bacteries[id]) + ">"
 
     # Отправляем статус игрового поля
     for id in list(players):
@@ -460,6 +413,15 @@ while server_works:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             server_works = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                for id in list(players):
+                    if players[id].address:
+                        players[id].size += 50
+            if event.key == pygame.K_DOWN:
+                for id in list(players):
+                    if players[id].address:
+                        players[id].size -= 50
 
     screen.fill('black')
     for id in list(players):
